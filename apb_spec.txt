@@ -1,24 +1,21 @@
 apb slave memory 모듈 테스트 
-
-파일은 apb.v 에 있음
+UVM/APB/apb_slave_mem.v
 
 module apb_slave_mem #(
     parameter ADDR_WIDTH = 32,
     parameter DATA_WIDTH = 32,
-    parameter RAM_DEPTH = 256
+    parameter RAM_DEPTH  = 256
 )(
-    input wire  pclk,
-    input wire  presetn,
-    input wire  [ADDR_WIDTH-1:0] paddr,
-    input wire  psel,               // setup
-    input wire  penable,            // access
-    input wire  pwrite,            // write signal
-    input wire  [DATA_WIDTH-1:0] pwdata, //write data
-    output reg  pready,
-    output reg  [DATA_WIDTH-1:0] prdata,
-    output reg  pslverr //주소값 이탈
+    input  wire                  pclk,
+    input  wire                  presetn,
+    input  wire [ADDR_WIDTH-1:0] paddr,
+    input  wire                  psel,
+    input  wire                  penable,
+    input  wire                  pwrite,
+    input  wire [DATA_WIDTH-1:0] pwdata,
+    output reg                   pready,
+    output reg  [DATA_WIDTH-1:0] rdata,
+    output wire                  pslverr
 );
 
-
-커버리지 100프로 테스트 필요
 5000번만 수행
