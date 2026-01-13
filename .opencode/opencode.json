@@ -1,0 +1,22 @@
+{
+  "agent": {
+    "reviewer": {
+      "model": "GPT-5 Nano",
+      "tools": {
+        "read": true,
+        "edit": false,
+        "write": false,
+        "terminal": false
+      },
+      "description": "코드만 리뷰하고 수정은 하지 않는 시니어 코드 리뷰어 에이전트",
+      "mode": "subagent",
+      "options": {},
+      "permission": {
+        "read": "allow",
+        "edit": "deny",
+        "terminal": "deny"
+      }
+    }
+  },
+  "$schema": "https://opencode.ai/config.json"
+}

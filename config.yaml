@@ -1,0 +1,50 @@
+project_name: apb_slave_mem_testbench
+output_dir: ./output
+dut:
+  module_name: apb_slave_mem
+  source_files:
+  - apb.v
+  parameters:
+    ADDR_WIDTH: 32
+    DATA_WIDTH: 32
+    RAM_DEPTH: 256
+interfaces:
+- name: vif_0
+  protocol: apb
+  type: slave
+  port_map:
+    pclk: pclk
+    presetn: presetn
+    paddr: paddr
+    psel: psel
+    penable: penable
+    pwrite: pwrite
+    pwdata: pwdata
+    pready: pready
+    prdata: prdata
+    pslverr: pslverr
+test_plan:
+  constraints:
+    addr:
+      min: 0
+      max: 1020
+      align: 4
+    data:
+      type: random
+    iterations: 5000
+  coverage:
+    addr_ranges:
+    - name: low
+      range:
+      - 0
+      - 63
+    - name: mid
+      range:
+      - 64
+      - 127
+    - name: high
+      range:
+      - 128
+      - 255
+    corner_cases:
+    - 'boundary_addr: 0x0, max_addr_hex'

@@ -1,0 +1,50 @@
+
+AXI4-Lite Slave Memory Test
+DUT File:
+UVM/AXI/axi_slave_ctrl.v 
+UVM/AXI/axi_slave_top.v 
+UVM/AXI/simple_ram.v
+
+module axi_slave_top #(
+    parameter ADDR_WIDTH = 32,
+    parameter DATA_WIDTH = 32,
+    parameter RAM_DEPTH  = 256
+)(
+    // AXI Global
+    input  wire                  aclk,
+    input  wire                  aresetn,
+
+    // Write Address Channel
+    input  wire [ADDR_WIDTH-1:0] s_axi_awaddr,
+    input  wire                  s_axi_awvalid,
+    output wire                  s_axi_awready,
+
+    // Write Data Channel
+    input  wire [DATA_WIDTH-1:0] s_axi_wdata,
+    input  wire [DATA_WIDTH/8-1:0] s_axi_wstrb,
+    input  wire                  s_axi_wvalid,
+    output wire                  s_axi_wready,
+
+    // Write Response Channel
+    output wire [1:0]            s_axi_bresp,
+    output wire                  s_axi_bvalid,
+    input  wire                  s_axi_bready,
+
+    // Read Address Channel
+    input  wire [ADDR_WIDTH-1:0] s_axi_araddr,
+    input  wire                  s_axi_arvalid,
+    output wire                  s_axi_arready,
+
+    // Read Data Channel
+    output wire [DATA_WIDTH-1:0] s_axi_rdata,
+    output wire [1:0]            s_axi_rresp,
+    output wire                  s_axi_rvalid,
+    input  wire                  s_axi_rready
+);
+
+Test Requirement:
+- 32-bit aligned access
+- Memory range: 0 to 1020 (1KB)
+- Random Data
+커버리지 100퍼센트 달성 필요
+테스트 5000번 실행
