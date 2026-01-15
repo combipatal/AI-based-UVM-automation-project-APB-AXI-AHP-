@@ -1,0 +1,49 @@
+module ahb_slave_mem (
+    //* GLOBAL SIGNAL
+    input           HCLK,
+    input           HRESETn,
+    //* MASTER SIGNAL
+    input   [31:0]  HADDR,  // 주소버스
+    input   [1:0]   HTRANS, // 전송타입 : IDLE, BUSY, NONSEQ, SEQ
+    input           HWRITE, // 1 = write, 0 = read
+    input   [2:0]   HSIZE,  // 전송 크기 (byte etc..)
+    input   [31:0]  HWDATA, // 쓰기 데이터 버스
+    //* SLAVE SIGNAL
+    output  [31:0]  HRDATA, // 읽기 데이터 버스
+    output          HREADY, // 1 = 전송완료, 0 = 대기
+    output          HRESP,  // 응답신호 (0 = OKAY, 1 = ERROR)
+    //* DECODER SIGNAL
+    input           HSELx   // Decoder가 Slave를 선택
+
+);   
+
+//==============================================================================
+// HTRANS 정의 (AHB-Lite Protocol)
+//==============================================================================
+localparam IDLE   = 2'b00;
+localparam BUSY   = 2'b01;
+localparam NONSEQ = 2'b10;
+localparam SEQ    = 2'b11;
+
+//==============================================================================
+// HRESP 정의 (AHB-Lite: 1-bit)
+//==============================================================================
+localparam OKAY  = 1'b0;
+localparam ERROR = 1'b1;
+
+//==============================================================================
+// 내부 신호 선언
+//==============================================================================
+reg [31:0] memory [0:1023];  // 4KB 메모리 (1024 x 32bit)
+reg [31:0] HRDATA_reg;
+reg        HREADY_reg;
+reg        HRESP_reg;
+
+// Address Phase에서 받은 신호들을 Data Phase에서 사용하기 위해 저장
+reg [31:0] addr_latch;
+reg        write_latch;
+reg [2:0]  size_latch;
+reg        sel_latch;
+UVM/AHB/ahb_slave_mem.v 모듈위치
+
+100번 테스트 

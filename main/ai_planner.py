@@ -12,33 +12,54 @@ import argparse
 import subprocess
 from pathlib import Path
 
-# Ollama API 설정 (CLI 사용)
-OLLAMA_MODEL = "deepseek-coder-v2:latest"
+OLLAMA_MODEL = "qwen2.5-coder:7b"
+VIP_SIGNALS_PATH = Path(__file__).parent.parent / "templates" / "vip" / "vip_signals.yaml"
 
-# 프롬프트 템플릿
 
-SYSTEM_PROMPT = """You are a UVM verification expert. 
+def load_vip_signals() -> dict:
+    """Load VIP signal definitions from vip_signals.yaml"""
+    if not VIP_SIGNALS_PATH.exists():
+        return {}
+    with open(VIP_SIGNALS_PATH, 'r') as f:
+        return yaml.safe_load(f) or {}
+
+
+def get_vip_signals_prompt_section() -> str:
+    """Generate VIP signals section for AI prompt"""
+    vip_signals = load_vip_signals()
+    if not vip_signals:
+        return ""
+    
+    sections = []
+    for protocol, info in vip_signals.items():
+        signals_str = ", ".join(info.get('signals', []))
+        sections.append(f"    - **{protocol.upper()}**: {signals_str}")
+    
+    return "\n".join(sections)
+
+SYSTEM_PROMPT_TEMPLATE = """You are a UVM verification expert. 
 Your goal is to generate a COMPLETE `config.yaml` file for a UVM testbench generator based on the user's provided specification (which may include Verilog code).
 
 ### Instructions:
 1. **Analyze Verilog Parameters**: Look for parameters like `ADDR_WIDTH`, `DATA_WIDTH`, and `RAM_DEPTH`.
    - Calculate the memory size in bytes. (e.g., RAM_DEPTH=256, DATA_WIDTH=32(4bytes) -> Size = 1024 bytes).
    - Set `constraints.addr.max` based on this calculated size (e.g., 1024 - 4 = 1020).
-2. **Identify Interfaces**: Detect protocols (APB, AXI, etc.) and map ports.
-   - Standard APB signals: pclk, presetn, paddr, psel, penable, pwrite, pwdata, pready, prdata, pslverr.
+2. **Identify Interfaces**: Detect protocols (APB, AXI, AHB) and map ports by SEMANTIC MEANING.
 3. **Generate Full Config**: Output a valid YAML with `project_name`, `dut`, `interfaces`, and `test_plan`.
    - **CRITICAL PORT_MAP RULES**:
      - **KEY** = EXACT Verilog port name from the DUT code
      - **VALUE** = FIXED standard interface signal name (from the list below)
+     - **Match by SEMANTIC MEANING, not just name similarity**
      - **NEVER copy the DUT port name as the value if it differs from the standard!**
-   - **Protocol Standard Signals (FIXED - use these as VALUES)**:
-     - **APB**: pclk, presetn, paddr, psel, penable, pwrite, pwdata, pready, prdata, pslverr
-     - **AXI**: aclk, aresetn, awaddr, awvalid, awready, wdata, wstrb, wvalid, wready, bresp, bvalid, bready, araddr, arvalid, arready, rdata, rresp, rvalid, rready
-   - **Examples**:
-     - DUT: `input pclk` (standard name) -> `pclk: "pclk"` ✓
-     - DUT: `input clk` (non-standard) -> `clk: "pclk"` ✓ (NOT `clk: "clk"` ✗)
-     - DUT: `output rdata` (APB, non-standard) -> `rdata: "prdata"` ✓ (NOT `rdata: "rdata"` ✗)
-     - DUT: `input s_axi_awaddr` (AXI) -> `s_axi_awaddr: "awaddr"` ✓
+   - **Protocol Standard Signals (FIXED - use these EXACT names as VALUES)**:
+{vip_signals_section}
+   - **Semantic Mapping Examples**:
+     - DUT `input clk` → VALUE `pclk` (both are clocks for APB)
+     - DUT `input HCLK` → VALUE `hclk` (both are clocks for AHB)
+     - DUT `input rst_n` → VALUE `presetn` (both are active-low resets)
+     - DUT `output rdata` → VALUE `prdata` (both are read data in APB)
+     - DUT `input HSELx` → VALUE `hsel` (both are slave select)
+   - **Confidence**: Only map if 80%+ confident the signals serve the same purpose
 
 ### Output Format (YAML ONLY):
 
@@ -138,6 +159,77 @@ test_plan:
       - "boundary_addr: 0x0, 0x3FC"
 """
 
+AHB_EXAMPLE_INPUT = """
+Spec:
+- AHB-Lite slave memory
+- File: UVM/AHB/ahb_slave_mem.v
+Code:
+module ahb_slave_mem (
+    input           HCLK,
+    input           HRESETn,
+    input   [31:0]  HADDR,
+    input   [1:0]   HTRANS,
+    input           HWRITE,
+    input   [2:0]   HSIZE,
+    input   [31:0]  HWDATA,
+    output  [31:0]  HRDATA,
+    output          HREADY,
+    output          HRESP,
+    input           HSELx
+);
+reg [31:0] memory [0:1023];  // 4KB memory
+"""
+
+AHB_EXAMPLE_OUTPUT = """project_name: ahb_mem_project
+output_dir: "./output"
+
+dut:
+  module_name: ahb_slave_mem
+  source_files:
+    - "UVM/AHB/ahb_slave_mem.v"
+  parameters:
+    ADDR_WIDTH: 32
+    DATA_WIDTH: 32
+
+interfaces:
+  - name: "vif_0"
+    protocol: "ahb"
+    type: "slave"
+    port_map:
+      HCLK: "hclk"
+      HRESETn: "hresetn"
+      HADDR: "haddr"
+      HTRANS: "htrans"
+      HWRITE: "hwrite"
+      HSIZE: "hsize"
+      HWDATA: "hwdata"
+      HRDATA: "hrdata"
+      HREADY: "hready"
+      HRESP: "hresp"
+      HSELx: "hsel"
+
+test_plan:
+  constraints:
+    addr:
+      min: 0
+      max: 4092  # 4KB - 4 = 4096 - 4
+      align: 4
+    data:
+      type: random
+    iterations: 100
+  coverage:
+    addr_ranges:
+      - name: "low"
+        range: [0, 1023]
+      - name: "mid"
+        range: [1024, 3071]
+      - name: "high"
+        range: [3072, 4095]
+    corner_cases:
+      - "boundary_addr: 0x0, 0xFFC"
+      - "size_variation: BYTE, HALFWORD, WORD"
+"""
+
 
 def call_ollama(prompt: str) -> str:
     """로컬 Ollama API 호출"""
@@ -160,15 +252,16 @@ def call_ollama(prompt: str) -> str:
 
 
 def build_prompt(user_input: str) -> str:
-    """Few-shot 프롬프트 생성"""
-    prompt = f"""{SYSTEM_PROMPT}
+    vip_signals_section = get_vip_signals_prompt_section()
+    system_prompt = SYSTEM_PROMPT_TEMPLATE.format(vip_signals_section=vip_signals_section)
+    
+    return f"""{system_prompt}
 
 ### User Input:
 {user_input}
 
 ### Output (YAML only):
 """
-    return prompt
 
 
 def parse_yaml_response(response: str) -> dict:
@@ -207,8 +300,13 @@ def validate_config(config: dict) -> bool:
     return True
 
 
+def post_process_config(config: dict) -> dict:
+    if 'dut' in config and 'dut_parameters' not in config['dut']:
+        config['dut']['dut_parameters'] = {}
+    return config
+
+
 def generate_test_plan(user_input: str) -> dict:
-    """메인 함수: 자연어 → 전체 Config YAML 변환"""
     print(f"\n[AI] Generating full configuration using {OLLAMA_MODEL}...")
     
     prompt = build_prompt(user_input)
@@ -222,12 +320,11 @@ def generate_test_plan(user_input: str) -> dict:
     config = parse_yaml_response(response)
     
     if validate_config(config):
+        config = post_process_config(config)
         print("[AI] Valid configuration generated!")
         return config
     else:
         print("[AI] Invalid configuration structure")
-        # 디버깅을 위해 응답 출력
-        # print(response) 
         return None
 
 

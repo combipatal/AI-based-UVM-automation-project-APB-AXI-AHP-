@@ -45,36 +45,28 @@ class Generator:
 
         template = self.template_env.get_template(template_path)
         
-        # Helper to extract clock/reset DUT port name from port_map
-        def get_clock_reset_names(port_map, protocol):
-            clock_name = None
-            reset_name = None
-            for dut_port, intf_sig in port_map.items():
-                if intf_sig in ['pclk', 'aclk']:
-                    clock_name = dut_port
-                elif intf_sig in ['presetn', 'aresetn']:
-                    reset_name = dut_port
-            # Fallback to standard names if not found
-            default_clk = 'aclk' if protocol == 'axi' else 'pclk'
-            default_rst = 'aresetn' if protocol == 'axi' else 'presetn'
-            return clock_name or default_clk, reset_name or default_rst
+        PROTOCOL_CLOCKS = {'apb': 'pclk', 'axi': 'aclk', 'ahb': 'hclk'}
+        PROTOCOL_RESETS = {'apb': 'presetn', 'axi': 'aresetn', 'ahb': 'hresetn'}
         
-        # Context building
+        vip_params = self.config['dut'].get('parameters', {}) or {}
+        dut_inst_params = self.config['dut'].get('dut_parameters', {}) or {}
+        
         context = {
             'vip_packages': [f"{intf['protocol']}_pkg" for intf in self.config['interfaces']],
             'interfaces': [
                 {
                     'type': f"{intf['protocol']}_if",
                     'name': intf['name'],
-                    'handle': intf['name'],
-                    'clock': get_clock_reset_names(intf.get('port_map', {}), intf['protocol'])[0],
-                    'reset': get_clock_reset_names(intf.get('port_map', {}), intf['protocol'])[1]
+                    'protocol': intf['protocol'],
+                    'clock': PROTOCOL_CLOCKS.get(intf['protocol'], 'pclk'),
+                    'reset': PROTOCOL_RESETS.get(intf['protocol'], 'presetn')
                 } for intf in self.config['interfaces']
             ],
             'dut_name': self.config['dut']['module_name'],
-            'addr_width': self.config['dut']['parameters'].get('ADDR_WIDTH', 32),
-            'data_width': self.config['dut']['parameters'].get('DATA_WIDTH', 32),
-            'default_test': f"{self.config['interfaces'][0]['protocol']}_test", # Temporary Default
+            'dut_parameters': dut_inst_params,
+            'addr_width': vip_params.get('ADDR_WIDTH', 32),
+            'data_width': vip_params.get('DATA_WIDTH', 32),
+            'default_test': f"{self.config['interfaces'][0]['protocol']}_test",
             'port_maps': self._build_port_maps(self.config['interfaces'])
         }
 
@@ -284,40 +276,14 @@ class Generator:
         print(f"[Generated] {out_path}")
 
     def copy_vip_files(self):
-        """
-        Render and copy VIP templates to output directory.
-        """
-        # Unique protocols to avoid redundant copying
         protocols = set(intf['protocol'] for intf in self.config['interfaces'])
         
-        # Build context with DUT parameters AND test_plan
         context = {
-            **self.config['dut']['parameters'],  # ADDR_WIDTH, DATA_WIDTH, etc.
+            **self.config['dut'].get('parameters', {}),
         }
         
-        # Add test_plan if exists
         if 'test_plan' in self.config:
             context['test_plan'] = self.config['test_plan']
-        
-        # Extract clock and reset names from first interface's port_map
-        # These are the DUT port names that users define
-        first_intf = self.config['interfaces'][0]
-        port_map = first_intf.get('port_map', {})
-        
-        # Find clock and reset keys (DUT port names)
-        # For APB: look for keys that map to 'pclk' or 'presetn'
-        # For AXI: look for keys that map to 'aclk' or 'aresetn'
-        clock_name = None
-        reset_name = None
-        for dut_port, intf_sig in port_map.items():
-            if intf_sig in ['pclk', 'aclk']:
-                clock_name = dut_port
-            elif intf_sig in ['presetn', 'aresetn']:
-                reset_name = dut_port
-        
-        # Fallback to standard names if not found
-        context['clock_name'] = clock_name or ('aclk' if first_intf['protocol'] == 'axi' else 'pclk')
-        context['reset_name'] = reset_name or ('aresetn' if first_intf['protocol'] == 'axi' else 'presetn')
 
         for proto in protocols:
             src_dir = os.path.join("templates", "vip", proto)

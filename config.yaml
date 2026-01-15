@@ -1,50 +1,58 @@
-project_name: apb_slave_mem_testbench
+project_name: ahb_slave_mem_testbench
 output_dir: ./output
 dut:
-  module_name: apb_slave_mem
+  module_name: ahb_slave_mem
   source_files:
-  - apb.v
+  - UVM/AHB/ahb_slave_mem.v
   parameters:
     ADDR_WIDTH: 32
     DATA_WIDTH: 32
-    RAM_DEPTH: 256
+  dut_parameters: {}
 interfaces:
 - name: vif_0
-  protocol: apb
+  protocol: ahb
   type: slave
   port_map:
-    pclk: pclk
-    presetn: presetn
-    paddr: paddr
-    psel: psel
-    penable: penable
-    pwrite: pwrite
-    pwdata: pwdata
-    pready: pready
-    prdata: prdata
-    pslverr: pslverr
+    HCLK: hclk
+    HRESETn: hresetn
+    HADDR: haddr
+    HTRANS: htrans
+    HWRITE: hwrite
+    HSIZE: hsize
+    HWDATA: hwdata
+    HRDATA: hrdata
+    HREADY: hready
+    HRESP: hresp
+    HSELx: hsel
 test_plan:
   constraints:
     addr:
       min: 0
-      max: 1020
+      max: 1023
       align: 4
     data:
       type: random
-    iterations: 5000
+    iterations: 100
   coverage:
     addr_ranges:
     - name: low
       range:
       - 0
-      - 63
+      - 255
     - name: mid
       range:
-      - 64
-      - 127
+      - 256
+      - 511
     - name: high
       range:
-      - 128
-      - 255
+      - 512
+      - 767
+    - name: very_high
+      range:
+      - 768
+      - 1023
     corner_cases:
-    - 'boundary_addr: 0x0, max_addr_hex'
+    - 'boundary_addr: 0x0'
+    - 'boundary_addr: 0xFF'
+    - 'boundary_addr: 0x400'
+    - 'boundary_addr: 0x7FF'

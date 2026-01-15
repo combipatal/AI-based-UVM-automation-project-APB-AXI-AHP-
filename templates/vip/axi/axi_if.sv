@@ -3,8 +3,8 @@ interface axi_if #(
     int ADDR_WIDTH = {{ ADDR_WIDTH }},
     int DATA_WIDTH = {{ DATA_WIDTH }}
 ) (
-    input bit {{ clock_name }}, 
-    input bit {{ reset_name }}
+    input bit aclk, 
+    input bit aresetn
 );
 
     // Write Address Channel

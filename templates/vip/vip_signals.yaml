@@ -1,0 +1,64 @@
+apb:
+  clock: pclk
+  reset: presetn
+  signals:
+    - pclk
+    - presetn
+    - paddr
+    - psel
+    - penable
+    - pwrite
+    - pwdata
+    - pready
+    - prdata
+    - pslverr
+
+ahb:
+  clock: hclk
+  reset: hresetn
+  signals:
+    - hclk
+    - hresetn
+    - haddr
+    - htrans
+    - hwrite
+    - hsize
+    - hburst
+    - hprot
+    - hwdata
+    - hrdata
+    - hready
+    - hresp
+    - hsel
+
+axi:
+  clock: aclk
+  reset: aresetn
+  signals:
+    - aclk
+    - aresetn
+    - awaddr
+    - awlen
+    - awsize
+    - awburst
+    - awvalid
+    - awready
+    - wdata
+    - wstrb
+    - wlast
+    - wvalid
+    - wready
+    - bresp
+    - bvalid
+    - bready
+    - araddr
+    - arlen
+    - arsize
+    - arburst
+    - arvalid
+    - arready
+    - rdata
+    - rresp
+    - rlast
+    - rvalid
+    - rready

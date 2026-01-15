@@ -28,10 +28,10 @@ module top;
     {% endfor %}
 
     // DUT Instantiation
-    {{ dut_name }} #(
-        .ADDR_WIDTH({{ addr_width }}),
-        .DATA_WIDTH({{ data_width }})
-    ) dut (
+    {{ dut_name }} {% if dut_parameters %}#(
+        {% for param_name, param_value in dut_parameters.items() %}.{{ param_name }}({{ param_value }}){% if not loop.last %},{% endif %}
+        {% endfor %}
+    ) {% endif %}dut (
         // Connect Interface Signals
         {% for port_map in port_maps %}
         .{{ port_map.dut_port }} ({{ port_map.intf_sig }}){% if not loop.last %},{% endif %}

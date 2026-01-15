@@ -2,8 +2,8 @@ interface apb_if #(
     parameter int ADDR_WIDTH = {{ ADDR_WIDTH }},
     parameter int DATA_WIDTH = {{ DATA_WIDTH }}
 )(
-    input logic {{ clock_name }},
-    input logic {{ reset_name }}
+    input logic pclk,
+    input logic presetn
 );
 
     logic [ADDR_WIDTH-1:0] paddr;
@@ -19,14 +19,14 @@ interface apb_if #(
     modport master (
         output paddr, psel, penable, pwrite, pwdata,
         input  pready, prdata, pslverr,
-        input  {{ clock_name }}, {{ reset_name }}
+        input  pclk, presetn
     );
 
     // Modport for Monitor (Observer)
     modport monitor (
         input paddr, psel, penable, pwrite, pwdata,
         input pready, prdata, pslverr,
-        input {{ clock_name }}, {{ reset_name }}
+        input pclk, presetn
     );
 
 endinterface

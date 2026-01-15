@@ -35,8 +35,8 @@ void dpi_mem_write(int addr, int data) {
         PyObject *pFunc = PyObject_GetAttrString(pModule, "dpi_mem_write");
         if (pFunc && PyCallable_Check(pFunc)) {
             PyObject *pArgs = PyTuple_New(2);
-            PyTuple_SetItem(pArgs, 0, PyLong_FromLong(addr));
-            PyTuple_SetItem(pArgs, 1, PyLong_FromLong(data));
+            PyTuple_SetItem(pArgs, 0, PyLong_FromUnsignedLong((unsigned int)addr));
+            PyTuple_SetItem(pArgs, 1, PyLong_FromUnsignedLong((unsigned int)data));
             
             PyObject *pValue = PyObject_CallObject(pFunc, pArgs);
             if (pValue != NULL) {
@@ -63,11 +63,11 @@ int dpi_mem_read(int addr) {
         PyObject *pFunc = PyObject_GetAttrString(pModule, "dpi_mem_read");
         if (pFunc && PyCallable_Check(pFunc)) {
             PyObject *pArgs = PyTuple_New(1);
-            PyTuple_SetItem(pArgs, 0, PyLong_FromLong(addr));
+            PyTuple_SetItem(pArgs, 0, PyLong_FromUnsignedLong((unsigned int)addr));
             
             PyObject *pValue = PyObject_CallObject(pFunc, pArgs);
             if (pValue != NULL) {
-                result = (int)PyLong_AsLong(pValue);
+                result = (int)PyLong_AsUnsignedLong(pValue);
                 Py_DECREF(pValue);
             } else {
                 PyErr_Print();
