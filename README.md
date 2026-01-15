@@ -1,5 +1,5 @@
 # UVM Testbench Generator - 환경 설정 및 주의사항
--- AHP 추가 예정
+-- AHB 추가 예정
 -- coverage 추가 예정
 ## 1. 프로젝트 개요 (Project Overview)
 
