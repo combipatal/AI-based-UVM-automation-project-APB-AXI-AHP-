@@ -1,5 +1,7 @@
 import os
 import sys
+from .verilog_parser import parse_all_dut_sources
+
 try:
     from jinja2 import Environment, FileSystemLoader
 except ImportError:
@@ -278,14 +280,31 @@ class Generator:
     def copy_vip_files(self):
         protocols = set(intf['protocol'] for intf in self.config['interfaces'])
         
+        # Auto-infer bit widths from DUT source files
+        inferred_widths = parse_all_dut_sources(
+            self.config['dut'].get('source_files', [])
+        )
+        
+        # Protocol-specific clock/reset names
+        PROTOCOL_CLOCKS = {'apb': 'pclk', 'axi': 'aclk', 'ahb': 'hclk'}
+        PROTOCOL_RESETS = {'apb': 'presetn', 'axi': 'aresetn', 'ahb': 'hresetn'}
+        
+        # Build context: config.yaml parameters override inferred values
+        config_params = self.config['dut'].get('parameters', {}) or {}
         context = {
-            **self.config['dut'].get('parameters', {}),
+            'ADDR_WIDTH': config_params.get('ADDR_WIDTH', inferred_widths.get('ADDR_WIDTH', 32)),
+            'DATA_WIDTH': config_params.get('DATA_WIDTH', inferred_widths.get('DATA_WIDTH', 32)),
+            **config_params,
         }
         
         if 'test_plan' in self.config:
             context['test_plan'] = self.config['test_plan']
 
         for proto in protocols:
+            # Add protocol-specific clock/reset to context
+            context['clock_name'] = PROTOCOL_CLOCKS.get(proto, 'clk')
+            context['reset_name'] = PROTOCOL_RESETS.get(proto, 'resetn')
+            
             src_dir = os.path.join("templates", "vip", proto)
             dst_dir = os.path.join(self.output_dir, "vip", proto)
             

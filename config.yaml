@@ -1,58 +1,50 @@
-project_name: ahb_slave_mem_testbench
+project_name: APB_REG_tb
 output_dir: ./output
 dut:
-  module_name: ahb_slave_mem
+  module_name: APB_REG
   source_files:
-  - UVM/AHB/ahb_slave_mem.v
+  - UVM/APB/APB_REG.v
   parameters:
-    ADDR_WIDTH: 32
-    DATA_WIDTH: 32
+    REG_NUM_BITS: 4
   dut_parameters: {}
 interfaces:
 - name: vif_0
-  protocol: ahb
-  type: slave
+  protocol: apb
+  type: master
   port_map:
-    HCLK: hclk
-    HRESETn: hresetn
-    HADDR: haddr
-    HTRANS: htrans
-    HWRITE: hwrite
-    HSIZE: hsize
-    HWDATA: hwdata
-    HRDATA: hrdata
-    HREADY: hready
-    HRESP: hresp
-    HSELx: hsel
+    CLK: pclk
+    RESETn: presetn
+    i_psel: psel
+    i_penable: penable
+    i_pwrite: pwrite
+    i_paddr: paddr
+    i_pwdata: pwdata
+    o_prdata: prdata
+    o_pready: pready
+    o_pslverr: pslverr
 test_plan:
   constraints:
     addr:
       min: 0
-      max: 1023
+      max: 60            # REG_NUM_BITS=4: 16 words x 4 bytes = 64 bytes (0x00-0x3C)
       align: 4
     data:
       type: random
-    iterations: 100
+    iterations: 100      # Reduced for smaller address space
   coverage:
     addr_ranges:
     - name: low
       range:
       - 0
-      - 255
+      - 15
     - name: mid
       range:
-      - 256
-      - 511
+      - 16
+      - 31
     - name: high
       range:
-      - 512
-      - 767
-    - name: very_high
-      range:
-      - 768
-      - 1023
+      - 32
+      - 60
     corner_cases:
     - 'boundary_addr: 0x0'
-    - 'boundary_addr: 0xFF'
-    - 'boundary_addr: 0x400'
-    - 'boundary_addr: 0x7FF'
+    - 'boundary_addr: 0x3C'

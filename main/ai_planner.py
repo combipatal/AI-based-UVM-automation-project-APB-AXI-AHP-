@@ -306,6 +306,66 @@ def post_process_config(config: dict) -> dict:
     return config
 
 
+def validate_address_constraints(config: dict) -> dict:
+    """
+    Validate and auto-correct address constraints based on DUT parameters.
+    Checks if addr.max exceeds DUT's addressable range.
+    """
+    if not config:
+        return config
+    
+    dut_params = config.get('dut', {}).get('parameters', {})
+    test_plan = config.get('test_plan', {})
+    addr_constraints = test_plan.get('constraints', {}).get('addr', {})
+    
+    if not addr_constraints:
+        return config
+    
+    # Calculate DUT's addressable range based on parameters
+    max_addressable = None
+    
+    # Method 1: REG_NUM_BITS (register file)
+    if 'REG_NUM_BITS' in dut_params:
+        reg_num_bits = dut_params['REG_NUM_BITS']
+        num_registers = 2 ** reg_num_bits
+        data_width_bytes = dut_params.get('DATA_WIDTH', 32) // 8
+        max_addressable = (num_registers * data_width_bytes) - data_width_bytes
+        print(f"[Validation] REG_NUM_BITS={reg_num_bits} -> {num_registers} regs -> max_addr={max_addressable}")
+    
+    # Method 2: RAM_DEPTH (memory)
+    elif 'RAM_DEPTH' in dut_params:
+        ram_depth = dut_params['RAM_DEPTH']
+        data_width_bytes = dut_params.get('DATA_WIDTH', 32) // 8
+        max_addressable = (ram_depth * data_width_bytes) - data_width_bytes
+        print(f"[Validation] RAM_DEPTH={ram_depth} -> max_addr={max_addressable}")
+    
+    # Method 3: ADDR_WIDTH (generic)
+    elif 'ADDR_WIDTH' in dut_params:
+        addr_width = dut_params['ADDR_WIDTH']
+        # Assume full address space, but warn user
+        max_addressable = (2 ** addr_width) - 4
+        print(f"[Validation] ADDR_WIDTH={addr_width} -> max_addr={max_addressable} (full range)")
+    
+    # Validate and auto-correct if needed
+    if max_addressable is not None:
+        current_max = addr_constraints.get('max', 0)
+        if current_max > max_addressable:
+            print(f"[WARNING] addr.max={current_max} exceeds DUT capacity ({max_addressable})!")
+            print(f"[AUTO-FIX] Setting addr.max={max_addressable}")
+            config['test_plan']['constraints']['addr']['max'] = max_addressable
+            
+            # Also suggest reducing iterations if address space is small
+            iterations = test_plan.get('constraints', {}).get('iterations', 100)
+            num_unique_addrs = (max_addressable + 4) // 4  # word-aligned
+            if iterations > num_unique_addrs * 2:
+                suggested_iterations = min(num_unique_addrs * 2, 100)
+                print(f"[WARNING] iterations={iterations} may cause address collisions")
+                print(f"[AUTO-FIX] Setting iterations={suggested_iterations}")
+                config['test_plan']['constraints']['iterations'] = suggested_iterations
+    
+    return config
+
+
 def generate_test_plan(user_input: str) -> dict:
     print(f"\n[AI] Generating full configuration using {OLLAMA_MODEL}...")
     
@@ -321,6 +381,7 @@ def generate_test_plan(user_input: str) -> dict:
     
     if validate_config(config):
         config = post_process_config(config)
+        config = validate_address_constraints(config)
         print("[AI] Valid configuration generated!")
         return config
     else:

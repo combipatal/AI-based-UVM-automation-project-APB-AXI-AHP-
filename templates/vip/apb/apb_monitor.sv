@@ -59,7 +59,8 @@ class apb_monitor #(
         end
 
         // 3. 완료 시점 (Access Phase + Ready=1) 데이터 샘플링
-        // 이때 Read Data와 Response가 유효합니다.
+        // 중요: 조합 회로 출력을 캡처하려면 약간의 델타 딜레이 필요
+        #1; // Delta delay for combinational prdata to settle
         if (!tr.write) begin
             tr.rdata = vif.prdata;
             tr.data  = vif.prdata; // 편의상 data 필드에도 복사 (구현에 따라 다름)
